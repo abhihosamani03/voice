@@ -29,6 +29,7 @@ dependencies:
   bluetooth_low_energy: ^6.2.1
   google_mlkit_translation: ^0.15.1
   audioplayers: ^6.8.1
+  permission_handler: ^13.0.2
 
 dev_dependencies:
   flutter_test:

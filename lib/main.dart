@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:sherpa_onnx/sherpa_onnx.dart' as sherpa;
 
 import 'core/theme.dart';
 import 'ml/stt_engine.dart';
@@ -11,6 +12,10 @@ import 'ui/home_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
+  // sherpa-onnx >= 1.13 requires the native C API bindings to be loaded
+  // before creating ANY runtime object (recognizer, VAD, TTS). Without
+  // this, every engine call throws 'Please initialize sherpa-onnx first'.
+  sherpa.initBindings();
   runApp(const iTantraApp());
 }
 

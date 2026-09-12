@@ -129,7 +129,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             ScaffoldMessenger.of(this.context).showSnackBar(
                               const SnackBar(
                                 content: Text(
-                                    'Bluetooth unavailable — running in loopback mode'),
+                                    'Mesh needs Bluetooth on + nearby-devices permission — running in loopback mode'),
                                 duration: Duration(seconds: 3),
                               ),
                             );

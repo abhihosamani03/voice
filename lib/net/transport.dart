@@ -80,7 +80,9 @@ class BleTransportAdapter implements Transport {
 
   @override
   Future<int> send(Uint8List frame) {
-    _ble.resetHops(); // Local origination resets the hop budget.
+    // Local origination: mark the sequence ID as seen so this packet is
+    // not re-delivered to the app when it echoes back through the mesh.
+    _ble.markOriginated(frame);
     return _ble.send(frame);
   }
 
@@ -93,7 +95,8 @@ class BleTransportAdapter implements Transport {
 class SwitchableTransport implements Transport {
   Transport _active;
   final _controller = StreamController<Uint8List>.broadcast();
-  StreamSubscription<Uint8List>? _sub;  final BleMeshTransport mesh = BleMeshTransport.instance;
+  StreamSubscription<Uint8List>? _sub;
+  final BleMeshTransport mesh = BleMeshTransport.instance;
 
   SwitchableTransport() : _active = LoopbackTransport() {
     _wire();
@@ -135,7 +138,7 @@ class SwitchableTransport implements Transport {
 
   @override
   Future<int> send(Uint8List frame) {
-    if (_active is BleTransportAdapter) mesh.resetHops();
+    // The BLE adapter marks locally originated frames for dedup.
     return _active.send(frame);
   }
 
