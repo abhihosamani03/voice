@@ -20,7 +20,7 @@ class AlarmOverlay extends StatefulWidget {
 }
 
 class _AlarmOverlayState extends State<AlarmOverlay>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   late AnimationController _pulse;
   late AnimationController _countdown;
 

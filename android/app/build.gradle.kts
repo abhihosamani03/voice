@@ -8,7 +8,7 @@ plugins {
 android {
     namespace = "com.example.voice"
     // permission_handler_android requires compileSdk 37.
-    compileSdk = maxOf(flutter.compileSdkVersion, 37)
+    compileSdk = 37
     ndkVersion = flutter.ndkVersion
 
     compileOptions {

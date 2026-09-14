@@ -35,6 +35,7 @@ class SttEngine {
   bool _initialized = false;
   String? _currentLocale;
   StreamSubscription<Uint8List>? _audioSubscription;
+  final BytesBuilder _pcmBuffer = BytesBuilder(copy: false);
 
   // ── Model download state ──────────────────────────────────────
   bool _downloading = false;
@@ -308,7 +309,11 @@ class SttEngine {
       }
     }
 
-    // Ensure we have mic permission and start recording.
+    await _startRecording(onResult);
+  }
+
+  /// Ensure we have mic permission and start recording.
+  Future<void> _startRecording(SttResultCallback onResult) async {
     _recorder = AudioRecorder();
     final hasPerm = await _recorder!.hasPermission();
     if (!hasPerm) {
@@ -316,6 +321,8 @@ class SttEngine {
       _recorder = null;
       return;
     }
+
+    _pcmBuffer.clear();
 
     final stream = await _recorder!.startStream(
       const RecordConfig(
@@ -325,23 +332,21 @@ class SttEngine {
       ),
     );
 
-    // Feed audio chunks to the recognizer.
+    // Feed audio chunks to the buffer + recognizer.
     _audioSubscription = stream.listen((audioData) {
+      _pcmBuffer.add(audioData);
       _processAudio(audioData, onResult);
     });
   }
 
-  /// Process a chunk of PCM audio through the VAD + recognizer.
+  /// Process a chunk of PCM audio through the VAD + recognizer for live preview.
   void _processAudio(Uint8List pcmData, SttResultCallback onResult) {
-    // Convert int16 PCM to float32 for sherpa-onnx.
     final float32Data = _pcm16ToFloat32(pcmData);
 
-    // If VAD is available, use it for endpoint detection.
     final vad = _vad;
     if (vad != null) {
       vad.acceptWaveform(float32Data);
 
-      // Check if we have a complete speech segment.
       while (vad.isDetected()) {
         final segment = vad.front();
         if (segment.samples.isNotEmpty) {
@@ -349,9 +354,6 @@ class SttEngine {
         }
         vad.pop();
       }
-    } else {
-      // No VAD — feed the raw audio directly to recognizer.
-      _runRecognizer(float32Data, onResult);
     }
   }
 
@@ -368,7 +370,7 @@ class SttEngine {
       recognizer.decode(stream);
       final result = recognizer.getResult(stream);
       if (result.text.isNotEmpty) {
-        onResult(result.text, true);
+        onResult(result.text, false);
       }
       stream.free();
     } catch (_) {
@@ -390,12 +392,37 @@ class SttEngine {
     return float32List;
   }
 
-  /// Stop listening.
-  Future<void> stop() async {
+  /// Stop listening and decode the complete recorded audio buffer.
+  Future<String?> stop() async {
     await _audioSubscription?.cancel();
     _audioSubscription = null;
     await _recorder?.stop();
     _recorder = null;
+
+    final pcmBytes = _pcmBuffer.takeBytes();
+    if (pcmBytes.isEmpty) return null;
+
+    final float32Data = _pcm16ToFloat32(pcmBytes);
+    // Needs at least 0.2s of audio (3200 samples @ 16kHz)
+    if (float32Data.length < 3200) return null;
+
+    final recognizer = _recognizer;
+    if (recognizer == null) return null;
+
+    try {
+      final stream = recognizer.createStream();
+      stream.acceptWaveform(
+        sampleRate: 16000,
+        samples: float32Data,
+      );
+      recognizer.decode(stream);
+      final result = recognizer.getResult(stream);
+      stream.free();
+      final text = result.text.trim();
+      return text.isNotEmpty ? text : null;
+    } catch (_) {
+      return null;
+    }
   }
 
   /// Whether the engine is currently listening.

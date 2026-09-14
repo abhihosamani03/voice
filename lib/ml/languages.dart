@@ -21,9 +21,10 @@ class Lang {
     required this.iso639,
     required this.sttModel,
     required this.sttTokens,
-    this.ttsModel = 'models/tts/model.onnx',
-    this.ttsTokens = 'models/tts/tokens.txt',
-  });
+    String? ttsModel,
+    String? ttsTokens,
+  })  : ttsModel = ttsModel ?? 'models/tts/$iso639/model.onnx',
+        ttsTokens = ttsTokens ?? 'models/tts/$iso639/tokens.txt';
 
   @override
   String toString() => name;

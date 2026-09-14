@@ -28,6 +28,10 @@ class TtsEngine {
   /// Whether the neural VITS engine is active for the current language.
   bool get isNeuralReady => _neural != null;
 
+  /// Whether the neural VITS engine is active for a specific language.
+  bool isNeuralReadyFor(Lang lang) =>
+      _neural != null && _neuralLangIso == lang.iso639;
+
   /// Load the neural TTS model for [lang] if it is downloaded.
   /// Returns `true` when the neural engine is ready for [lang].
   Future<bool> initNeural(Lang lang) async {
@@ -78,7 +82,7 @@ class TtsEngine {
   Future<void> _configurePlatform(String bcp47) async {
     if (_platformConfigured && _currentBcp47 == bcp47) return;
     await _tts.setLanguage(bcp47);
-    await _tts.setSpeechRate(0.9);
+    await _tts.setSpeechRate(0.5);
     await _tts.setVolume(1.0);
     await _tts.setPitch(1.0);
     _currentBcp47 = bcp47;
@@ -99,7 +103,7 @@ class TtsEngine {
   ///
   /// Uses the neural VITS engine when its model is loaded for this
   /// language; otherwise falls back to the platform synthesizer.
-  Future<void> speak(String text, {bool emergency = false}) async {
+  Future<void> speak(String text, {bool emergency = false, String? langCode}) async {
     if (text.isEmpty) return;
 
     if (emergency) {
@@ -124,12 +128,21 @@ class TtsEngine {
           speed: emergency ? 1.1 : 1.0,
         );
         if (audio.samples.isNotEmpty) {
-          await _playPcm(
-            audio.samples,
-            audio.sampleRate,
-            emergency: emergency,
-          );
-          return;
+          var hasAudibleSound = false;
+          for (final s in audio.samples) {
+            if (s.abs() > 0.001) {
+              hasAudibleSound = true;
+              break;
+            }
+          }
+          if (hasAudibleSound) {
+            await _playPcm(
+              audio.samples,
+              audio.sampleRate,
+              emergency: emergency,
+            );
+            return;
+          }
         }
       } catch (_) {
         // Neural synthesis failed — fall through to platform TTS.
@@ -137,18 +150,22 @@ class TtsEngine {
     }
 
     // ── Platform fallback (FlutterTts) ──
-    await _configurePlatform(_currentBcp47 ?? 'hi-IN');
+    final bcp47 = langCode ?? _currentBcp47 ?? 'hi-IN';
+    await _configurePlatform(bcp47);
     if (emergency) {
       await _tts.setVolume(1.0);
-      await _tts.setSpeechRate(1.1); // slightly faster for urgency
+      await _tts.setSpeechRate(0.6); // slightly faster for urgency
+    } else {
+      await _tts.setVolume(1.0);
+      await _tts.setSpeechRate(0.5);
     }
 
     await _tts.speak(text);
     await _tts.awaitSpeakCompletion(true);
 
     if (emergency) {
-      await _tts.setVolume(0.8);
-      await _tts.setSpeechRate(0.9);
+      await _tts.setVolume(1.0);
+      await _tts.setSpeechRate(0.5);
     }
   }
 

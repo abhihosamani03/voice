@@ -50,24 +50,24 @@ class _PttButtonState extends State<PttButton>
       builder: (context, constraints) {
         final size = constraints.maxWidth.clamp(120.0, 200.0);
         return GestureDetector(
-          onTapDown: widget.isActive
+          onTapDown: (widget.isActive && !_holding)
               ? (_) {
                   setState(() => _holding = true);
                   widget.onPressed();
                 }
               : null,
-          onTapUp: widget.isActive
-              ? (_) {
-                  setState(() => _holding = false);
-                  widget.onReleased();
-                }
-              : null,
-          onTapCancel: widget.isActive
-              ? () {
-                  setState(() => _holding = false);
-                  widget.onReleased();
-                }
-              : null,
+          onTapUp: (_) {
+            if (_holding) {
+              setState(() => _holding = false);
+              widget.onReleased();
+            }
+          },
+          onTapCancel: () {
+            if (_holding) {
+              setState(() => _holding = false);
+              widget.onReleased();
+            }
+          },
           child: AnimatedBuilder(
             animation: _pulse,
             builder: (context, child) {

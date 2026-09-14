@@ -219,7 +219,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: Center(
                       child: PttButton(
                         isActive: _transceiverOn &&
-                            ctrl.phase == TransceiverPhase.idle &&
+                            (ctrl.phase == TransceiverPhase.idle ||
+                                ctrl.phase == TransceiverPhase.recording) &&
                             !ctrl.modelsDownloading,
                         onPressed: () => ctrl.startPtt(),
                         onReleased: () => ctrl.stopPtt(),
