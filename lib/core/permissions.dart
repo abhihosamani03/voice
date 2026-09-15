@@ -40,10 +40,8 @@ class PermissionManager {
 
   static Future<bool> _requestMicrophone() async {
     try {
-      // speech_to_text handles its own permission request on initialize().
-      // We just need to ensure the permission dialog can appear.
-      // On Android, RECORD_AUDIO is requested when STT starts.
-      return true;
+      final status = await Permission.microphone.request();
+      return status.isGranted;
     } catch (_) {
       return false;
     }
@@ -68,18 +66,13 @@ class PermissionManager {
   static Future<bool> _requestBluetooth() async {
     try {
       if (Platform.isAndroid) {
-        // Android 12+ (API 31): runtime BLUETOOTH_* permissions.
-        if (await _androidSdkInt() >= 31) {
-          final statuses = await [
-            Permission.bluetoothScan,
-            Permission.bluetoothConnect,
-            Permission.bluetoothAdvertise,
-          ].request();
-          return statuses.values.every((s) => s.isGranted);
-        }
-        // Android 11 and below: manifest permissions; location is required
-        // for BLE scanning (already requested in _requestLocation).
-        return true;
+        final statuses = await [
+          Permission.bluetoothScan,
+          Permission.bluetoothConnect,
+          Permission.bluetoothAdvertise,
+          Permission.bluetooth,
+        ].request();
+        return statuses[Permission.bluetoothScan]?.isGranted != false;
       }
       return true;
     } catch (_) {

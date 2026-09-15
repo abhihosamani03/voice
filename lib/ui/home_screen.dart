@@ -38,12 +38,25 @@ class _HomeScreenState extends State<HomeScreen> {
     _textController.addListener(() {
       if (mounted) setState(() {});
     });
-    _requestPermissions();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      final ctrl = Provider.of<TransceiverController>(context, listen: false);
-      ctrl.predownloadModels(ctrl.senderLang);
+      _initApp();
     });
+  }
+
+  Future<void> _initApp() async {
+    await _requestPermissions();
+    if (!mounted) return;
+    final ctrl = Provider.of<TransceiverController>(context, listen: false);
+    ctrl.predownloadModels(ctrl.senderLang);
+    final ok = await ctrl.enableMesh();
+    if (!ok && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Bluetooth mesh disabled — please turn on Bluetooth'),
+          duration: Duration(seconds: 3),
+        ),
+      );
+    }
   }
 
   @override

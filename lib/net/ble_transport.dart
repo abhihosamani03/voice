@@ -126,7 +126,7 @@ class BleMeshTransport {
       });
 
       // ── Central role: scan for other iTantra peripherals ──
-      await _central.startDiscovery(serviceUUIDs: [serviceUuid]);
+      await _central.startDiscovery();
 
       _running = true;
       debugPrint('BleMesh: started (advertising + scanning)');
@@ -197,6 +197,15 @@ class BleMeshTransport {
         fanout++;
       } catch (e) {
         debugPrint('BLE write to ${entry.key} failed: $e');
+        try {
+          await _central.writeCharacteristic(
+            entry.value,
+            char,
+            value: frame,
+            type: GATTCharacteristicWriteType.withResponse,
+          );
+          fanout++;
+        } catch (_) {}
       }
     }
 
@@ -226,9 +235,10 @@ class BleMeshTransport {
   void _onDiscovered(DiscoveredEventArgs args) {
     final key = args.peripheral.uuid;
     if (_connected.containsKey(key)) return;
-    if ((args.advertisement.serviceUUIDs).contains(serviceUuid)) {
-      debugPrint('BleMesh: discovered iTantra peer $key');
-      // Fire-and-forget connect; results arrive via connectionStateChanged.
+    final name = args.advertisement.name;
+    final uuids = args.advertisement.serviceUUIDs;
+    if (uuids.contains(serviceUuid) || name == 'iTantra' || (name != null && name.contains('iTantra'))) {
+      debugPrint('BleMesh: discovered iTantra peer $key (name: $name)');
       _central.connect(args.peripheral).then((_) {}, onError: (e) {
         debugPrint('BLE connect to $key failed: $e');
       });
